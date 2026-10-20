@@ -1,0 +1,24 @@
+# Render Blueprint — requires you to connect a Render account and approve
+# hosting charges. A persistent disk requires a paid service plan.
+services:
+  - type: web
+    name: viral-vision
+    runtime: node
+    region: frankfurt
+    plan: starter
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: viral-vision-inquiries
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /var/data
+      - key: NODE_VERSION
+        value: 22.16.0
+      - key: ADMIN_USER
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false

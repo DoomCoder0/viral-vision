@@ -1,0 +1,6 @@
+.git
+.env
+data/*.sqlite*
+_gif_frames
+*.py
+node_modules
