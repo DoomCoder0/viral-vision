@@ -66,6 +66,7 @@ export function createApp(){return http.createServer(async(req,res)=>{
     return safeStatic(req,res,'/admin.html');
   }
   if(req.method==='POST'&&route==='/api/inquiries'){
+    if(process.env.PREVIEW_MODE === '1') return sendJson(res,503,{error:'Contact form is not yet enabled. Please try again later.'});
     const ip=(req.socket.remoteAddress||'unknown');
     const now=Date.now(); const old=limiter.get(ip)||[];
     const count=old.filter(t=>now-t<60000);
