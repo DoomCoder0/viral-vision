@@ -1,100 +1,100 @@
-/* Viral Vision — original, procedural particle-ribbon animation.
-   Runs in Canvas: no stock video, exported PNG, or external animation library. */
+/* Viral Vision – procedural dotted fabric waves. */
 (() => {
   'use strict';
-  const canvas = document.getElementById('particle-canvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d', { alpha: false });
-  if (!ctx) return;
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-  let w = 0, h = 0, dpr = 1, frame = 0, raf = 0, last = 0;
-  const pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
-
-  const resize = () => {
-    const rect = canvas.getBoundingClientRect();
-    w = Math.max(1, rect.width); h = Math.max(1, rect.height);
-    dpr = Math.min(window.devicePixelRatio || 1, 1.6);
-    canvas.width = Math.floor(w * dpr);
-    canvas.height = Math.floor(h * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw(frame);
-  };
-  const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
-  const smooth = (t) => { t = clamp(t,0,1); return t*t*(3-2*t); };
-
-  function waveField(x, y, time) {
-    // Two intersecting wave fields create a silky moiré/ribbon instead of flat dots.
-    return Math.sin((x*7.4 + y*3.6 + time*.35) * Math.PI) * 33
-         + Math.sin((x*4.0 - y*5.4 - time*.18) * Math.PI) * 20
-         + Math.sin((x*2.0 + y*1.4 + time*.10) * Math.PI) * 19;
+  const canvas=document.querySelector('#particle-canvas');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d',{alpha:false,desynchronized:true});
+  if(!ctx)return;
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  let W=0,H=0,D=1,raf=0,last=0,t=0,visible=true;
+  const TWO_PI=Math.PI*2;
+  const clamp=(x,a,b)=>Math.min(b,Math.max(a,x));
+  const bell=x=>Math.exp(-x*x);
+  function dot(x,y,size,r,g,b,a){
+    if(x<0||y<0||x>W||y>H)return;
+    ctx.fillStyle='rgba('+r+','+g+','+b+','+clamp(a,0,1).toFixed(3)+')';
+    ctx.fillRect(x,y,size,size);
   }
-
-  function draw(t) {
-    ctx.fillStyle = '#02050a';
-    ctx.fillRect(0, 0, w, h);
-    const bg = ctx.createRadialGradient(w*.83,h*.14,0,w*.83,h*.14,w*.7);
-    bg.addColorStop(0,'rgba(0,68,87,.15)'); bg.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
-    pointer.x += (pointer.targetX - pointer.x)*.04;
-    pointer.y += (pointer.targetY - pointer.y)*.04;
-    const spacing = w < 580 ? 10.6 : 10;
-    const cols = Math.ceil(w/spacing)+5;
-    const rows = Math.ceil(h/spacing)+12;
-    for (let r = -6; r < rows; r++) {
-      const v = r/(rows-12);
-      const fadeV = .12 + .83*smooth((v+.06)*1.12);
-      for (let c = -2; c < cols; c++) {
-        const x = (c-.5)*spacing;
-        const nx = x/w;
-        const ripple = waveField(nx,v,t);
-        const bottomSweep = -100*Math.exp(-Math.pow((nx-.31)/.36,2)) * Math.sin(v*3.15+nx*.9+t*.12);
-        const y = (r+.1)*spacing + ripple * (.25+.4*fadeV) + bottomSweep*.50;
-        if(y < 0 || y > h) continue;
-        const rippleEdge = .32 + .40*smooth(v);
-        const rightGlow = smooth((nx-.50)*2);
-        const leftGlow = smooth((.45-nx)*1.55);
-        const bright = .18 + .7*(.55*rightGlow+.35*leftGlow) + .20*Math.sin(nx*8-v*5+t*.3)**2;
-        const valley = 1 - .61*Math.exp(-Math.pow((v-.51)/.29,2));
-        let alpha = clamp((.15 + bright*.40) * fadeV * valley * rippleEdge*2, .015, .72);
-        // Behind the headings, diminish particles for legibility.
-        if(v>.14 && v<.77 && nx>.12 && nx<.88) alpha*=.26;
-        ctx.fillStyle = `rgba(${Math.floor(15+rightGlow*12)},${Math.floor(99+rightGlow*91)},${Math.floor(150+rightGlow*45)},${alpha.toFixed(3)})`;
-        const radius = .65 + .32*fadeV + .19*rightGlow;
-        ctx.beginPath(); ctx.arc(x + pointer.x*(v-.4)*7, y + pointer.y*(nx-.5)*6, radius, 0, Math.PI*2); ctx.fill();
+  function draw(time){
+    ctx.fillStyle='#01050c';ctx.fillRect(0,0,W,H);
+    const grad=ctx.createRadialGradient(W*.64,H*.4,0,W*.64,H*.4,W*.75);
+    grad.addColorStop(0,'rgba(0,31,51,.24)');
+    grad.addColorStop(1,'rgba(0,2,7,0)');
+    ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+    const sx=W<650?9.2:8.4,sy=W<650?8.7:7.7;
+    const cols=Math.ceil(W/sx)+4,rows=Math.ceil(H/sy)+16;
+    for(let row=-8;row<rows-8;row++){
+      const v=row*sy/H;
+      for(let col=-2;col<cols-2;col++){
+        const x=col*sx,u=x/W;
+        const broad=Math.sin((u*1.12+v*.70)*TWO_PI+time*.20);
+        const folds=Math.sin((u*2.12-v*.76)*TWO_PI-time*.15);
+        const ridge=Math.sin((u*1.15-v*.48)*TWO_PI+time*.09);
+        const bend=38*broad+26*folds+34*ridge*bell((v-.52)/.43);
+        const y=row*sy+bend*(.38+v*.27)+41*Math.sin(u*2.9+time*.09)*bell((v-.55)/.30);
+        if(y<0||y>H)continue;
+        const edge=.45+.55*Math.sin(u*5.4+v*3+time*.19)**2;
+        const shade=1-.60*bell((u-.48)/.32)*bell((v-.40)/.32);
+        const glow=.46*bell((v-(.43+.13*Math.sin(u*4.1-.8+time*.13)))/.15);
+        const a=clamp((.07+.16*edge+glow*.38)*shade,.025,.49);
+        const c=clamp(glow*1.6+Math.max(0,u-.53)*.6,0,1);
+        dot(x,y,1.1+glow*.40,Math.round(12+c),Math.round(70+c*94),Math.round(116+c*84),a);
       }
     }
-    // Illuminated turquoise ribbon high on the right, sweeping as reference animation does.
-    const lineCount=37, dotCount=Math.max(38,Math.round(w/14));
-    for(let row=0;row<lineCount;row++){
-      const v=row/(lineCount-1);
-      for(let i=0;i<dotCount;i++){
-        const u=i/(dotCount-1);
-        const nx=.47 + u*.58;
-        const x=nx*w;
-        const y=h*(.035 + v*.24) + 39*Math.sin((u*1.85 + v*.45 + t*.032)*Math.PI*2) + 37*Math.sin(u*3.1-v*1.7+t*.018);
-        if(y<0||y>h) continue;
-        const alpha = (.09 + .41*smooth(u) * (1-.47*v)) * (1-.25*Math.sin(u*15 + t*.08));
-        ctx.fillStyle=`rgba(20,218,224,${clamp(alpha,0,.57).toFixed(3)})`;
-        ctx.beginPath();ctx.arc(x,y,.62+.25*smooth(u),0,Math.PI*2);ctx.fill();
+    const crest=H*.40,strands=W<650?38:72,segments=Math.ceil(W/(W<650?8.5:7.8));
+    for(let row=0;row<strands;row++){
+      const n=(row-strands*.48)/strands,fade=bell(n*2);
+      for(let col=0;col<=segments;col++){
+        const u=col/segments,x=u*W;
+        const middle=crest+H*(.31*Math.sin(u*2.60-.93+time*.10)-.06*Math.sin(u*7.2+time*.17));
+        const y=middle+n*H*(.30+.13*Math.cos(u*6+time*.07));
+        const depth=bell((u-.44)/.38);
+        const stripe=Math.pow(Math.max(0,1-Math.abs(n)*2),4);
+        const a=clamp((.055+stripe*.53+depth*.16)*fade*(u>.80?(1-u)*3.7:1),0,.78);
+        if(a<.04)continue;
+        dot(x,y,1.15+stripe*.26,18,Math.round(120+stripe*75),Math.round(152+stripe*46),a);
       }
     }
+    const rr=W<650?45:75,rs=W<650?85:135;
+    for(let row=0;row<rr;row++){
+      const k=(row-rr*.49)/rr,glow=bell(k*2.7);
+      for(let col=0;col<=rs;col++){
+        const s=col/rs,u=.67+s*.36,x=u*W;
+        const lift=H*(.51-.46*s)-H*.07*Math.sin(s*5.6+time*.17);
+        const curl=H*.18*Math.sin((s*.85+k*.32)*TWO_PI+time*.09);
+        const y=lift+k*H*(.18+.09*s)+curl;
+        const alpha=clamp((.07+.60*glow)*(.3+.7*s*s)*(1-.16*Math.abs(k)),.02,.8);
+        dot(x,y,1.1+.3*glow,13,Math.round(135+84*glow),Math.round(151+58*glow),alpha);
+      }
+    }
+    canvas.dataset.rendering='dotted-wave';
+  }
+  function size(){
+    const r=canvas.getBoundingClientRect();
+    W=Math.max(1,r.width);H=Math.max(1,r.height);
+    D=Math.min(devicePixelRatio||1,1.5);
+    canvas.width=Math.round(W*D);canvas.height=Math.round(H*D);
+    ctx.setTransform(D,0,0,D,0,0);
+    draw(t);
   }
   function tick(ms){
-    raf = requestAnimationFrame(tick);
-    if(document.hidden || ms-last<32) return;
-    last=ms; frame=ms*.001; draw(frame);
+    raf=0;if(document.hidden||!visible||reduced.matches)return;
+    if(ms-last>=32){last=ms;t=ms/1000;draw(t);}
+    raf=requestAnimationFrame(tick);
   }
-  window.addEventListener('resize', resize, {passive:true});
-  window.addEventListener('pointermove', e=>{
-    pointer.targetX=clamp((e.clientX/innerWidth-.5)*2,-1,1);
-    pointer.targetY=clamp((e.clientY/innerHeight-.5)*2,-1,1);
-  },{passive:true});
-  const observer=new IntersectionObserver(entries=>{
-    if(entries[0].isIntersecting && !reduced.matches && !raf){raf=requestAnimationFrame(tick);}
-    else if(!entries[0].isIntersecting && raf){cancelAnimationFrame(raf);raf=0;}
-  });
-  resize(); observer.observe(canvas);
-  reduced.addEventListener?.('change',()=>{if(reduced.matches){cancelAnimationFrame(raf);raf=0;draw(0);}else if(!raf)raf=requestAnimationFrame(tick);});
-  // Testable flag; verify that the background is drawn procedurally, not a media file.
-  canvas.dataset.rendering='canvas-particles';
+  function update(){
+    if(raf)cancelAnimationFrame(raf);
+    raf=0;size();
+    if(visible&&!document.hidden&&!reduced.matches)raf=requestAnimationFrame(tick);
+  }
+  if('IntersectionObserver'in window){
+    new IntersectionObserver(entries=>{
+      visible=entries[0].isIntersecting;
+      if(visible)update();else if(raf){cancelAnimationFrame(raf);raf=0;}
+    },{rootMargin:'20px'}).observe(canvas);
+  }
+  window.addEventListener('resize',update,{passive:true});
+  document.addEventListener('visibilitychange',update);
+  reduced.addEventListener?.('change',update);
+  update();
 })();
