@@ -1,0 +1,49 @@
+name: Unpack Viral Vision site
+on:
+  push:
+    paths:
+      - ".github/workflows/unpack-viral-vision.yml"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  extract-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack already uploaded project archive
+        run: |
+          python3 - <<'PY'
+          import pathlib,zipfile,shutil
+          z=pathlib.Path('Viral-Vision-HR-EN-DE-Fullstack.zip')
+          assert z.exists(), 'Website ZIP is missing'
+          with zipfile.ZipFile(z) as archive:
+              names=archive.namelist()
+              assert 'Viral-Vision-Publish-Ready/public/index.html' in names
+              for item in archive.infolist():
+                  if item.is_dir():
+                      continue
+                  p=pathlib.PurePosixPath(item.filename)
+                  assert p.parts[0]=='Viral-Vision-Publish-Ready'
+                  relative=pathlib.Path(*p.parts[1:])
+                  assert relative and '..' not in relative.parts
+                  dest=pathlib.Path.cwd()/relative
+                  dest.parent.mkdir(parents=True,exist_ok=True)
+                  dest.write_bytes(archive.read(item))
+          server=pathlib.Path('server.mjs')
+          source=server.read_text()
+          needle="if(req.method==='POST'&&route==='/api/inquiries'){"
+          assert needle in source
+          source=source.replace(needle,needle+"\n    if(process.env.PREVIEW_MODE === '1') return sendJson(res,503,{error:'Contact form is not yet enabled. Please try again later.'});",1)
+          server.write_text(source)
+          print('Website extracted and preview safeguards enabled')
+          PY
+      - name: Commit website source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "Extract Viral Vision multilingual full-stack source"
+            git push
+          fi
